@@ -1,36 +1,54 @@
 # AgentNotch
 
-Una Dynamic Island per il notch del Mac che mostra cosa stanno facendo
-**Claude Code**, **Codex** e **OpenCode** mentre tu fai altro.
+A Dynamic Island for the Mac notch that shows what **Claude Code**, **Codex**, and
+**OpenCode** are doing while you work on something else.
 
-Nativa (SwiftUI + AppKit), nessuna dipendenza, nessun server, nessuna rete:
-legge solo i file che i tre agenti scrivono già sul tuo disco.
+Native (SwiftUI + AppKit), no dependencies, no server, no network: it only reads
+the files the three agents already write to disk.
 
-## Cosa mostra
+## Design rationale — The UX DeCode
 
-**A riposo** — niente. Il notch resta un notch.
+This app exists for one specific case: you're running more than one agentic
+coding tool at once, and you're doing something else entirely — writing,
+reading, in a meeting — while they work. The choices below aren't aesthetic
+preferences; each is a constraint pulled from *The UX DeCode*, the 13-principle
+HCI framework this project was designed against.
 
-**Due modi di segnalare, si sceglie dal menu.**
+| Principle | Decision | Why |
+|---|---|---|
+| **P4 — Match with mental models** | Borrows iOS 26's Dynamic Island metaphor instead of inventing a new one | The user already carries this mental model from their phone. Reusing it on a genuinely new surface (background agents, not notifications) costs zero learning time |
+| **P9 — Cognitive limits** | At rest: nothing. Full detail (session, branch, running tool, tokens, todos) only on hover | Progressive disclosure — nothing sits in the user's working memory that isn't needed for the task in front of them right now |
+| **P1 — Accessibility** | Meaning lives in the glyph (terminal, pencil, raised hand…), never in color alone | Color tells you *which* agent; the icon tells you *what's happening* — the interface still reads correctly for anyone who can't rely on hue |
+| **P8 — Visibility of system status & feedback** | An agent that needs you turns amber (or red on failure) and breathes for 20 seconds, then holds still | A signal that never stops moving becomes wallpaper — you stop seeing it, and it keeps the display link (and battery) awake for as long as you ignore it. Settling after 20s keeps the signal meaningful without demanding it stay loud forever |
+| **P5 — Effective, clear design** | One dominant state at rest: none. No decorative element competes with the one thing that matters when something does need attention | Visual restraint isn't decoration — it's what keeps the notch legible in a single glance instead of one more thing to parse |
+| **P3 — Consistency with platform conventions** | Click brings the agent's app forward; ⌥-click opens the project folder in Finder | Standard macOS modifier conventions — no gesture invented that the user has to learn just for this app |
 
-*Linea attorno al notch* — una linea sottile ricalca il profilo del notch senza
-occupare spazio. Con più agenti attivi si divide in **archi, uno per agente**,
-ognuno del suo colore: arancio Claude Code, verde acqua Codex, indaco OpenCode.
-Con un'occhiata sai non solo che qualcosa gira, ma chi.
+## What it shows
 
-*Isola compatta* — il notch si allarga di poco: a sinistra un pallino colorato
-per agente, a destra il simbolo di cosa sta succedendo (terminale se esegue
-comandi, mano alzata se ti aspetta, triangolo se è fallito). Occupa un po' di
-barra dei menu ma si legge senza avvicinarsi.
+**At rest** — nothing. The notch stays a notch.
 
-In entrambi i modi, quando un agente ha bisogno di te il suo colore diventa
-ambra (o rosso se è fallito) e comincia a **respirare** per 20 secondi, poi si
-stabilizza: una pulsazione perpetua diventa tappezzeria e smetti di vederla, e
-ti terrebbe acceso il display link finché la ignori.
+**Two ways to signal, chosen from the menu.**
 
-Il riquadro del notch è esatto (il calcolo con le API pubbliche coincide al punto
-con la `_notchFrame` privata di AppKit) e l'app segue i cambi di risoluzione, ma
-**la curvatura degli angoli non è esposta da nessuna API**: è ricalcata a occhio
-e regolabile a caldo, senza ricompilare.
+*Line around the notch* — a thin line traces the notch's outline without taking
+up space. With more than one agent active it splits into **arcs, one per
+agent**, each in its own color: orange for Claude Code, teal for Codex, indigo
+for OpenCode. One glance tells you not just that something's running, but
+which one.
+
+*Compact island* — the notch widens slightly: a colored dot per agent on the
+left, the glyph for what's happening on the right (terminal for a running
+command, a raised hand if it's waiting on you, a triangle if it failed). It
+takes a bit more menu bar space but reads without leaning in.
+
+In both modes, when an agent needs you its color turns amber (or red on
+failure) and starts to **breathe** for 20 seconds, then settles: a perpetual
+pulse becomes wallpaper and you stop seeing it, and it would keep the display
+link awake for as long as you ignore it.
+
+The notch's bounding box is exact (the calculation from public APIs matches
+AppKit's private `_notchFrame` to the point) and the app follows resolution
+changes, but **corner radius isn't exposed by any API**: it's eyeballed and
+tunable live, without recompiling.
 
 ```bash
 defaults write local.agentnotch notchCornerRadius -float 8
@@ -40,183 +58,185 @@ defaults write local.agentnotch notchCornerRadius -float 8
 defaults write local.agentnotch notchLineWidth -float 3
 ```
 
-**Avviso** — quando un agente passa da *al lavoro* a *ti aspetta*, l'isola si
-apre per qualche secondo con icona, nome dell'agente, stato e progetto, poi
-torna all'indicatore a riposo. È la transizione compatta della Dynamic Island.
+**Alert** — when an agent moves from *working* to *waiting on you*, the island
+opens for a few seconds with icon, agent name, status, and project, then
+returns to the resting indicator. This is the Dynamic Island's compact
+transition.
 
-**Al passaggio del mouse sul notch** — l'isola si apre del tutto: fino a 4
-sessioni con icona dell'attività, titolo, progetto, branch, tool in esecuzione,
-durata, token e todo.
+**On hover over the notch** — the island opens fully: up to 4 sessions with
+activity icon, title, project, branch, running tool, duration, tokens, and
+todos.
 
-### Le icone
+### The icons
 
-Il significato sta nel glifo, non nel testo: un'occhiata deve bastare.
+Meaning lives in the glyph, not the text — a glance has to be enough (P1, P9).
 
-| icona | mentre lavora | | icona | quando si ferma |
+| icon | while working | | icon | when it stops |
 |---|---|---|---|---|
-| terminale | comando shell | | mano alzata | ti aspetta |
-| documento | sta leggendo | | triangolo | errore |
-| matita | sta scrivendo file | | pausa | in pausa |
-| lente | sta cercando | | spunta | finito |
-| globo | web | | | |
-| due persone | subagente | | | |
-| tessera | strumento MCP | | | |
-| scintille | sta ragionando | | | |
+| terminal | shell command | | raised hand | waiting on you |
+| document | reading | | triangle | error |
+| pencil | writing a file | | pause | paused |
+| magnifying glass | searching | | checkmark | done |
+| globe | web | | | |
+| two people | subagent | | | |
+| card | MCP tool | | | |
+| sparkles | reasoning | | | |
 
-### Lo stile
+### The style
 
-Angoli continui (squircle) invece di archi circolari, morphing a molla,
-retrostante sfocato reale (`NSVisualEffectView`), bordo speculare che degrada
-dall'alto, e un fondo che è **nero pieno dove tocca il notch** — così si legge
-come una continuazione dell'hardware — e diventa vetro man mano che scende sul
-desktop.
+Continuous corners (squircle) instead of circular arcs, spring morphing, a
+real blurred backdrop (`NSVisualEffectView`), a specular edge that fades from
+the top, and a background that's **solid black where it touches the notch** —
+so it reads as a continuation of the hardware — and turns to glass as it
+extends onto the desktop.
 
-Click su una riga → porta in primo piano l'app dell'agente.
-⌥-click → apre la cartella del progetto nel Finder.
+Click a row → brings the agent's app to the foreground.
+⌥-click → opens the project folder in Finder.
 
-## Da dove arrivano i dati
+## Where the data comes from
 
-| Agente | Fonte | Come |
+| Agent | Source | How |
 |---|---|---|
-| Claude Code | `~/.claude/sessions/<pid>.json` + `~/.claude/projects/**/*.jsonl` | il file per-PID dà i processi vivi, il transcript viene letto in append (solo le righe nuove a ogni giro) |
-| Codex | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` + `session_index.jsonl` | `task_started` / `token_count` / `item_completed`; include la **percentuale di rate limit** del piano |
-| OpenCode | `~/.local/share/opencode/opencode.db` (SQLite) | tabelle `session`, `message`, `part`, `todo`, in sola lettura (`PRAGMA query_only`) |
+| Claude Code | `~/.claude/sessions/<pid>.json` + `~/.claude/projects/**/*.jsonl` | the per-PID file gives live processes, the transcript is read in append mode (only new lines each poll) |
+| Codex | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` + `session_index.jsonl` | `task_started` / `token_count` / `item_completed`; includes the plan's **rate-limit percentage** |
+| OpenCode | `~/.local/share/opencode/opencode.db` (SQLite) | `session`, `message`, `part`, `todo` tables, read-only (`PRAGMA query_only`) |
 
-Tutto in locale, sola lettura, un giro di polling al secondo.
+Everything local, read-only, one polling pass per second.
 
-### Come viene dedotto lo stato
+### How status is inferred
 
-- **al lavoro** — c'è un tool aperto, o un turno iniziato e non ancora chiuso, con attività recente
-- **ti aspetta** — Claude ha chiuso con `end_turn`, Codex ha emesso il completamento del turno, OpenCode ha un messaggio assistant con `time.completed`
-- **in attesa di conferma?** — euristica: un tool di Claude Code aperto da più di 35 secondi senza risposta è quasi sempre un prompt di permesso che ti aspetta a schermo. È un'inferenza, non un dato: Claude Code non scrive nel transcript quando mostra il prompt.
-- **errore** — Codex/OpenCode segnalano il fallimento del turno
+- **working** — a tool is open, or a turn has started and hasn't closed yet, with recent activity
+- **waiting on you** — Claude closed with `end_turn`, Codex emitted the turn completion, OpenCode has an assistant message with `time.completed`
+- **waiting for confirmation?** — heuristic: a Claude Code tool open for more than 35 seconds with no response is almost always a permission prompt waiting on screen. This is an inference, not a fact: Claude Code doesn't write to the transcript when it shows the prompt.
+- **error** — Codex/OpenCode report the turn failing
 
-## Uso
+## Usage
 
 ```bash
 ./build.sh && open AgentNotch.app
 ```
 
-L'app vive solo nella barra dei menu (nessuna icona nel Dock). Dal suo menu:
-suono degli avvisi, avviso sul notch, mostra anche le sessioni ferme, avvio al
-login, esci.
+The app lives only in the menu bar (no Dock icon). From its menu: alert sound,
+notch alert, also show idle sessions, launch at login, quit.
 
-Per vedere cosa leggono i parser senza aprire il pannello:
+To see what the parsers read without opening the panel:
 
 ```bash
 ./.build/release/AgentNotch --dump
 ```
 
-`--diag` stampa invece la geometria del notch rilevata, e
-`AGENTNOTCH_FORCE_MODE=alert|expanded|glow|compact` blocca il pannello in uno
-stato per guardarlo con calma senza aspettare che capiti, e
-`AGENTNOTCH_DEBUG=1` stampa su stderr modo, geometria del notch e rettangoli
-calcolati a ogni secondo — serve quando quello che vedi non torna con quello che
-l'app crede di disegnare. Su un Mac senza notch
-(o su un monitor esterno) il pannello diventa una pill fluttuante centrata in
-alto, con la stessa forma.
+`--diag` prints the detected notch geometry instead, and
+`AGENTNOTCH_FORCE_MODE=alert|expanded|glow|compact` locks the panel in one
+state so you can look at it calmly instead of waiting for it to happen, and
+`AGENTNOTCH_DEBUG=1` prints mode, notch geometry, and computed rectangles to
+stderr every second — useful when what you see doesn't match what the app
+thinks it's drawing. On a Mac without a notch (or on an external monitor) the
+panel becomes a floating pill centered at the top, with the same shape.
 
-Per allargare la finestra di freschezza durante i test — di default una sessione
-sparisce dopo 20 minuti di silenzio:
+To widen the freshness window during testing — by default a session
+disappears after 20 minutes of silence:
 
 ```bash
 AGENTNOTCH_WINDOW_MIN=1440 ./.build/release/AgentNotch --dump
 ```
 
-## Icone
+## Icons
 
-`build.sh` cerca due immagini nella cartella del progetto e le usa in posti
-diversi:
+`build.sh` looks for two images in the project folder and uses them in
+different places:
 
-| file | dove finisce |
+| file | where it ends up |
 |---|---|
-| `Icon` / `Icon.png` | icona del bundle (`.icns`, tutte le taglie da 16 a 1024) |
-| `outline` / `outline.png` | icona della barra dei menu, come immagine template |
+| `Icon` / `Icon.png` | bundle icon (`.icns`, every size from 16 to 1024) |
+| `outline` / `outline.png` | menu bar icon, as a template image |
 
-L'immagine della barra dei menu deve essere un'**immagine template**: nero più
-canale alpha, così macOS la ricolora da sé — bianca sulla barra scura, nera su
-quella chiara, invertita quando il menu è aperto. Il disegno in outline però
-arriva spesso da un'esportazione con lo sfondo "a scacchi" **dipinto nei pixel**
-e senza canale alpha: usato così com'è, nella barra si vedrebbe un rettangolo a
-scacchiera.
+The menu bar image has to be a **template image**: black plus an alpha
+channel, so macOS recolors it itself — white on a dark bar, black on a light
+one, inverted when the menu is open. But an outline drawing often comes from
+an export with a "checkerboard" background **painted into the pixels** and no
+alpha channel: used as-is, the menu bar would show a checkerboard rectangle.
 
-Per questo `tools/make-status-icon.swift` normalizza qualunque sorgente: se
-l'alpha c'è lo rispetta, se manca lo ricava dalla luminanza (più chiaro del 90%
-è sfondo, il resto conserva i bordi antialiasati). Poi ingrossa un poco il
-tratto prima di ridurre, perché a 19pt un filo sottile finisce sotto il pixel e
-si legge grigio invece che pieno. Il fattore è l'ultimo argomento: 0.18 di
-default, 0 per disattivarlo, di più per un disegno a filo molto sottile.
+That's why `tools/make-status-icon.swift` normalizes whatever source it's
+given: if alpha exists it respects it, if it's missing it derives it from
+luminance (lighter than 90% is background, the rest keeps the antialiased
+edges). Then it thickens the stroke a little before downscaling, because at
+19pt a thin line falls under a pixel and reads as gray instead of solid. The
+factor is the last argument: 0.18 by default, 0 to disable it, higher for a
+very thin line drawing.
 
-Il convertitore viene compilato una volta e messo in cache in `.build/`, e
-l'icona si rigenera solo quando l'immagine sorgente cambia — interpretato con
-`swift file.swift` lo stesso lavoro richiede 25 secondi invece di uno.
+The converter is compiled once and cached in `.build/`, and the icon only
+regenerates when the source image changes — interpreted with `swift
+file.swift` the same job takes 25 seconds instead of one.
 
-Se manca l'outline l'app ripiega sull'icona a colori ridotta, e se manca anche
-quella su un simbolo di sistema: il binario nudo lanciato in sviluppo non ha
-nemmeno una cartella `Resources`.
+If the outline is missing the app falls back to a downscaled color icon, and
+if that's missing too, to a system symbol: the bare binary launched during
+development doesn't even have a `Resources` folder.
 
-L'icona a colori ha lo sfondo trasparente: nel Finder apparirà come un logo che
-fluttua, non come il quadrato arrotondato standard di macOS. È una scelta
-estetica, non un errore.
+The color icon has a transparent background: in Finder it'll show up as a
+floating logo, not macOS's standard rounded square. That's a design choice,
+not a bug.
 
-## Struttura
+## Structure
 
 ```
 Sources/AgentNotch/
-  Models.swift            tipi condivisi, formattazione
-  Config.swift            soglie e preferenze
-  Tailer.swift            lettore JSONL incrementale + accesso JSON tollerante
-  SQLiteLite.swift        lettore SQLite minimale, sola lettura
+  Models.swift            shared types, formatting
+  Config.swift            thresholds and preferences
+  Tailer.swift            incremental JSONL reader + tolerant JSON access
+  SQLiteLite.swift        minimal read-only SQLite reader
   ClaudeProvider.swift    ┐
-  CodexProvider.swift     ├ un parser per agente → [AgentSession]
+  CodexProvider.swift     ├ one parser per agent → [AgentSession]
   OpenCodeProvider.swift  ┘
-  SessionStore.swift      polling, ordinamento per urgenza, avvisi
-  NotchShape.swift        silhouette ad angoli continui, vetro, colori
-  NotchView.swift         SwiftUI: linea / isola compatta / avviso / espansa
+  SessionStore.swift      polling, urgency ordering, alerts
+  NotchShape.swift        continuous-corner silhouette, glass, colors
+  NotchView.swift         SwiftUI: line / compact island / alert / expanded
   NotchController.swift   NSPanel, hover, click-through
-  LoginItem.swift         avvio al login via LaunchAgent
+  LoginItem.swift         launch at login via LaunchAgent
   main.swift              delegate, menu, --dump / --diag
 tools/
-  make-status-icon.swift  da outline su fondo chiaro a immagine template
+  make-status-icon.swift  outline-on-light-background to template image
 ```
 
-## Aggiungere un quarto agente
+## Adding a fourth agent
 
-Scrivi un tipo con `func poll() -> [AgentSession]`, aggiungi il caso a
-`AgentKind` (tag, colore, bundle id) e infilalo nella somma dentro
-`SessionStore.tick()`. Il resto — ordinamento, avvisi, UI — funziona da solo.
+Write a type with `func poll() -> [AgentSession]`, add the case to
+`AgentKind` (tag, color, bundle id), and fold it into the sum inside
+`SessionStore.tick()`. The rest — ordering, alerts, UI — works on its own.
 
-## Limiti noti
+## Known limits
 
-- I parser dipendono dai formati su disco dei tre agenti: un aggiornamento che
-  cambia il tracciato può far sparire un campo. `--dump` è il modo rapido per
-  accorgersene.
-- **La barra del contesto compare solo dove la finestra è dichiarata dall'agente**,
-  cioè oggi solo per Codex (`model_context_window`). Claude Code e OpenCode non
-  la scrivono da nessuna parte: assumerla produceva falsi allarmi — una sessione
-  Claude reale stava a 226k contro un tetto assunto di 200k, quindi barra rossa
-  su una sessione perfettamente sana. Per gli altri viene mostrato il numero di
-  token e basta. Se conosci il limite vero di un modello, aggiungilo a
-  `Config.knownWindows` e la barra ricompare.
-- Il costo è reale solo per OpenCode, che lo salva nel database; Claude Code e
-  Codex non lo scrivono nei file di sessione.
-- L'app è firmata ad-hoc: gira sulla tua macchina, non è distribuibile così com'è.
+- The parsers depend on the three agents' on-disk formats: an update that
+  changes the layout can make a field disappear. `--dump` is the fast way to
+  notice.
+- **The context bar only shows where the window is declared by the agent**,
+  which today means Codex only (`model_context_window`). Claude Code and
+  OpenCode don't write it anywhere: assuming it produced false alarms — a
+  real Claude session sat at 226k against an assumed 200k ceiling, so a red
+  bar on a perfectly healthy session. For the others, just the token count is
+  shown. If you know a model's real limit, add it to `Config.knownWindows`
+  and the bar comes back.
+- Cost is only real for OpenCode, which saves it in the database; Claude Code
+  and Codex don't write it to their session files.
+- The app is ad-hoc signed: it runs on your machine, it isn't distributable
+  as-is.
 
-## Nota sulle prestazioni
+## A note on performance
 
-L'app sta sotto l'1% di CPU e ~24 MB, ma ci sono voluti tre tentativi e vale
-scriverlo perché il prossimo che tocca la linea non li rifaccia:
+The app stays under 1% CPU and ~24 MB, but it took three attempts to get
+there, and it's worth writing down so the next person who touches this line
+doesn't redo them. This isn't a side note — it's the same P5 argument as the
+visual restraint above: performance *is* usability here, because the whole
+premise is an app you're not supposed to notice.
 
-- **Le sfocature costano per sempre.** `.blur()` è un filtro Core Animation che
-  viene ri-applicato a ogni ricomposizione. Nove tracciati sfocati tenevano ~2%
-  di CPU in modo permanente.
-- **`.drawingGroup()` è stato peggio**: un buffer offscreen per arco, memoria da
-  24 a 107 MB.
-- **`withAnimation(.repeatForever)` non si annulla** riassegnando la proprietà
-  che anima. L'unico modo affidabile per fermarla è distruggere la vista che la
-  ospita — per questo la linea che respira è un tipo di vista separato e non un
-  flag. Lasciarla girare teneva acceso il display link finché una sessione
-  restava in attesa.
+- **Blur costs forever.** `.blur()` is a Core Animation filter reapplied on
+  every recomposition. Nine blurred paths held ~2% CPU permanently.
+- **`.drawingGroup()` was worse**: an offscreen buffer per arc, memory from
+  24 to 107 MB.
+- **`withAnimation(.repeatForever)` doesn't cancel** by reassigning the
+  property it animates. The only reliable way to stop it is to destroy the
+  view hosting it — that's why the breathing line is a separate view type,
+  not a flag. Leaving it running kept the display link awake for as long as
+  a session stayed in the waiting state.
 
-Se una modifica fa salire la CPU, `sample <pid>` dice quale thread la sta
-consumando in pochi secondi.
+If a change drives CPU up, `sample <pid>` tells you which thread is consuming
+it in a few seconds.
