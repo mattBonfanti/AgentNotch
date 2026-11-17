@@ -6,6 +6,7 @@ import Combine
 /// closes, and keeps click-through correct so the menu bar stays usable.
 final class NotchController {
     private let store: SessionStore
+    private let services: ServiceMonitor
     private let vm = NotchViewModel()
     private var panel: NSPanel?
     private var hoverTimer: Timer?
@@ -15,8 +16,9 @@ final class NotchController {
     private var lastTickAt: Date = .distantPast
     private var hideWork: DispatchWorkItem?
 
-    init(store: SessionStore) {
+    init(store: SessionStore, services: ServiceMonitor) {
         self.store = store
+        self.services = services
     }
 
     func start() {
@@ -83,7 +85,7 @@ final class NotchController {
         p.becomesKeyOnlyIfNeeded = true
         p.ignoresMouseEvents = true
 
-        let host = NSHostingView(rootView: NotchView(store: store, vm: vm))
+        let host = NSHostingView(rootView: NotchView(store: store, vm: vm, services: services))
         host.frame = NSRect(origin: .zero, size: frame.size)
         host.autoresizingMask = [.width, .height]
         p.contentView = host
@@ -97,7 +99,8 @@ final class NotchController {
         let g = vm.geometry
         let widest = max(NotchView.size(mode: .expanded, geometry: g, rows: 4).width,
                          NotchView.size(mode: .alert, geometry: g, rows: 1).width)
-        let tallest = NotchView.size(mode: .expanded, geometry: g, rows: 4).height
+        let tallest = NotchView.size(mode: .expanded, geometry: g, rows: 4,
+                                     serviceRows: ServicesSection.maxRows).height
         return CGSize(width: widest + 80, height: tallest + 40)
     }
 
@@ -127,7 +130,8 @@ final class NotchController {
     /// Rect the visible shape occupies on screen, in global coordinates.
     private func shapeRect(for mode: NotchMode) -> NSRect {
         guard let screen else { return .zero }
-        let size = NotchView.size(mode: mode, geometry: vm.geometry, rows: store.sessions.count)
+        let size = NotchView.size(mode: mode, geometry: vm.geometry, rows: store.sessions.count,
+                                  serviceRows: services.rowCount)
         return NSRect(x: screen.frame.midX - size.width / 2,
                       y: screen.frame.maxY - size.height,
                       width: size.width,

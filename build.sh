@@ -4,7 +4,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-APP="AgentNotch.app"
+# APP_NAME / BUNDLE_ID let a side-by-side test build live next to the real one
+# without sharing its preferences or its login item. Defaults are unchanged.
+APP="${APP_NAME:-AgentNotch}.app"
+BUNDLE_ID="${BUNDLE_ID:-local.agentnotch}"
 CONTENTS="$APP/Contents"
 
 echo "▸ compilazione…"
@@ -71,7 +74,7 @@ cat > "$CONTENTS/Info.plist" <<PLIST
 <dict>
     <key>CFBundleName</key><string>AgentNotch</string>
     <key>CFBundleDisplayName</key><string>AgentNotch</string>
-    <key>CFBundleIdentifier</key><string>local.agentnotch</string>
+    <key>CFBundleIdentifier</key><string>${BUNDLE_ID}</string>
     <key>CFBundleExecutable</key><string>AgentNotch</string>
     <key>CFBundleIconFile</key><string>AgentNotch</string>
     <key>CFBundlePackageType</key><string>APPL</string>

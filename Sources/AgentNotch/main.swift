@@ -43,18 +43,39 @@ if CommandLine.arguments.contains("--dump") {
     exit(0)
 }
 
+/// `AgentNotch --services` checks everything in services.json once and exits.
+if CommandLine.arguments.contains("--services") {
+    Task {
+        switch ServicesFile.load() {
+        case .failure(let e):
+            print("services.json non valido (\(ServicesFile.url.path)): \(e)")
+            exit(1)
+        case .success(let file):
+            let specs = file.services.filter { $0.enabled ?? true }
+            print("Config: \(ServicesFile.url.path)  (ogni \(Int(file.pollInterval ?? 30))s)")
+            for s in await ServiceChecks.runAll(specs) {
+                print("  [\(s.health.word)] \(s.name) — \(s.detail)")
+            }
+            exit(0)
+        }
+    }
+    RunLoop.main.run()
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let store = SessionStore()
+    private let services = ServiceMonitor()
     private var controller: NotchController?
     private var statusItem: NSStatusItem?
     private var styleItems: [NSMenuItem] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        let c = NotchController(store: store)
+        let c = NotchController(store: store, services: services)
         controller = c
         c.start()
         store.start()
+        services.start()
         installStatusItem()
     }
 
@@ -122,6 +143,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         login.target = self
         login.state = LoginItem.isEnabled ? .on : .off
         menu.addItem(login)
+        menu.addItem(withTitle: "Modifica servizi…", action: #selector(editServices),
+                     keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Esci da AgentNotch", action: #selector(quit), keyEquivalent: "q")
             .target = self
@@ -151,6 +174,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let now = !LoginItem.isEnabled
         LoginItem.setEnabled(now)
         sender.state = now ? .on : .off
+    }
+
+    @objc private func editServices() {
+        _ = ServicesFile.load()   // creates the defaults on first use
+        NSWorkspace.shared.open(ServicesFile.url)
     }
 
     @objc private func quit() { NSApp.terminate(nil) }

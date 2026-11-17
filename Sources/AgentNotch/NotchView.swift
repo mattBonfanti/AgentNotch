@@ -27,6 +27,7 @@ final class NotchViewModel: ObservableObject {
 struct NotchView: View {
     @ObservedObject var store: SessionStore
     @ObservedObject var vm: NotchViewModel
+    @ObservedObject var services: ServiceMonitor
 
     static let expandedWidth: CGFloat = 462
     static let rowHeight: CGFloat = 50
@@ -40,7 +41,8 @@ struct NotchView: View {
     private var visibleSessions: [AgentSession] { Array(store.sessions.prefix(4)) }
     private var alertSession: AgentSession? { store.alert ?? store.headline }
 
-    static func size(mode: NotchMode, geometry: NotchGeometry, rows: Int) -> CGSize {
+    static func size(mode: NotchMode, geometry: NotchGeometry, rows: Int,
+                     serviceRows: Int = 0) -> CGSize {
         let w = max(geometry.notchWidth, 8)
         let h = max(geometry.notchHeight, 26)
         switch mode {
@@ -52,12 +54,14 @@ struct NotchView: View {
             return CGSize(width: w + alertExtraWidth, height: h + alertExtraHeight)
         case .expanded:
             let body = CGFloat(max(min(rows, 4), 1)) * rowHeight + 14
+                + ServicesSection.height(rows: serviceRows)
             return CGSize(width: expandedWidth, height: h + body)
         }
     }
 
     private var currentSize: CGSize {
-        Self.size(mode: vm.mode, geometry: vm.geometry, rows: visibleSessions.count)
+        Self.size(mode: vm.mode, geometry: vm.geometry, rows: visibleSessions.count,
+                  serviceRows: services.rowCount)
     }
 
     private var isIsland: Bool {
@@ -300,7 +304,8 @@ struct NotchView: View {
                 Text("Nessuna sessione attiva")
                     .font(.system(size: 11))
                     .foregroundStyle(.white.opacity(0.4))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: Self.rowHeight + 7)
             } else {
                 VStack(spacing: 2) {
                     ForEach(visibleSessions) { session in
@@ -319,6 +324,10 @@ struct NotchView: View {
                 .padding(.horizontal, 7)
                 .padding(.bottom, 7)
             }
+            if services.rowCount > 0 {
+                ServicesSection(monitor: services)
+            }
+            Spacer(minLength: 0)
         }
     }
 
