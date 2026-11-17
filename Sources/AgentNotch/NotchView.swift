@@ -211,7 +211,15 @@ struct NotchView: View {
     private var compactContent: some View {
         HStack(spacing: 0) {
             HStack(spacing: 5) {
-                ForEach(signallingSessions.prefix(3)) { session in
+                // Services get a triangle, agents keep their dots, so the two
+                // never read as the same thing.
+                if let problem = services.problemHealth {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 8.5, weight: .bold))
+                        .foregroundStyle(problem.color)
+                        .help("\(services.problemCount) servizi con problemi")
+                }
+                ForEach(signallingSessions.prefix(services.problemHealth == nil ? 3 : 2)) { session in
                     StatusPip(color: session.state == .working
                               ? session.kind.tint : session.state.color,
                               pulsing: session.wantsPulse)

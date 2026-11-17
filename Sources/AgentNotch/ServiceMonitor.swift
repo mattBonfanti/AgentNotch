@@ -277,6 +277,12 @@ final class ServiceMonitor: ObservableObject {
     var worst: ServiceHealth { statuses.map(\.health).max() ?? .unknown }
     /// Rows the panel reserves: one for a config error, else one per service.
     var rowCount: Int { configError != nil ? 1 : min(statuses.count, ServicesSection.maxRows) }
+    /// The worst state worth flagging on the compact pill, nil when all is ok
+    /// (or nothing has been checked yet).
+    var problemHealth: ServiceHealth? {
+        let w = worst
+        return w >= .degraded ? w : nil
+    }
     var problemCount: Int { statuses.filter { $0.health == .down || $0.health == .degraded }.count }
 
     func start() {

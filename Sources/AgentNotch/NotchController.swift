@@ -140,6 +140,9 @@ final class NotchController {
 
     private var baseMode: NotchMode {
         let resting: NotchMode = Config.indicatorStyle == .island ? .compact : .glow
+        // A service in trouble needs the pill whatever the style: the line has
+        // no room for a second kind of signal.
+        if services.problemHealth != nil { return .compact }
         if store.activeCount > 0 || store.waitingCount > 0 { return resting }
         if Config.showWhenIdle && store.hasAnything { return resting }
         return .hidden
