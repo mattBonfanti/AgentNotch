@@ -14,11 +14,14 @@ final class SessionStore: ObservableObject {
     private let claude = ClaudeProvider()
     private let codex = CodexProvider()
     private let opencode = OpenCodeProvider()
+    private let nativ = NativProvider()
     private let queue = DispatchQueue(label: "agentnotch.poll", qos: .utility)
     private var timer: Timer?
     private var previousStates: [String: SessionState] = [:]
     private var stateSince: [String: Date] = [:]
     private var alertClear: DispatchWorkItem?
+    private var lastAlertAt: [String: Date] = [:]
+    private var lastAnyAlertAt: Date = .distantPast
     private var tickCount = 0
     private var hasPolled = false
 
@@ -47,7 +50,8 @@ final class SessionStore: ObservableObject {
         if hasPolled, activeCount == 0, tickCount % 3 != 0 { return }
         queue.async { [weak self] in
             guard let self else { return }
-            var all = self.claude.poll() + self.codex.poll() + self.opencode.poll()
+            var all = self.claude.poll() + self.codex.poll()
+                + self.opencode.poll() + self.nativ.poll()
             all = all.filter { $0.isLive || $0.quietFor < Config.recentWindow }
             all.sort { a, b in
                 if a.state != b.state { return a.state > b.state }
@@ -79,6 +83,7 @@ final class SessionStore: ObservableObject {
         let liveIDs = Set(incoming.map(\.id))
         previousStates = previousStates.filter { liveIDs.contains($0.key) }
         stateSince = stateSince.filter { liveIDs.contains($0.key) }
+        lastAlertAt = lastAlertAt.filter { liveIDs.contains($0.key) }
 
         // Assigning an identical array would still fire objectWillChange and
         // redraw the whole panel every second for no reason.
@@ -86,7 +91,38 @@ final class SessionStore: ObservableObject {
         if incoming != sessions { sessions = incoming }
         if incoming.first != headline { headline = incoming.first }
 
-        if let n = newlyWaiting { raiseAlert(for: n) }
+        if let n = newlyWaiting, shouldAnnounce(n) { raiseAlert(for: n) }
+    }
+
+    /// An agent finishing a turn is not the same as an agent needing you, and
+    /// treating them alike meant a sound on every single turn — measured at ~24
+    /// interruptions in one working session. This decides what actually earns one.
+    private func shouldAnnounce(_ session: AgentSession) -> Bool {
+        switch session.attention {
+        case .none, .inferred:
+            // Shown on the notch, never announced: it may simply be wrong.
+            return false
+        case .turnFinished:
+            // A turn that lasted seconds ended while you were still watching it.
+            if session.elapsed < Config.minWorkBeforeAlert { return false }
+        case .blockedOnApproval, .failed:
+            break   // genuinely stuck or broken: always worth a word
+        }
+
+        // You are already looking at the app that wants you.
+        if Config.quietWhenFrontmost,
+           let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+           session.kind.hostBundleIDs.contains(front) {
+            return false
+        }
+
+        let now = Date()
+        if now.timeIntervalSince(lastAnyAlertAt) < Config.alertSpacing { return false }
+        if let last = lastAlertAt[session.id],
+           now.timeIntervalSince(last) < Config.alertCooldown { return false }
+        lastAlertAt[session.id] = now
+        lastAnyAlertAt = now
+        return true
     }
 
     private func raiseAlert(for session: AgentSession) {

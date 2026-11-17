@@ -409,7 +409,16 @@ struct IconBadge: View {
 
 struct SessionRow: View {
     let session: AgentSession
-    @State private var hovering = false
+    // macOS 26 / SDK 27 turned SwiftUI's `@State` into a macro backed by the
+    // `SwiftUIMacros` plugin, which ships only with Xcode — this project builds
+    // with the Command Line Tools alone, so the attribute cannot expand here.
+    // The underlying @propertyWrapper struct is still there, so this is exactly
+    // what the macro would have generated.
+    private var _hovering = State(wrappedValue: false)
+    private var hovering: Bool {
+        get { _hovering.wrappedValue }
+        nonmutating set { _hovering.wrappedValue = newValue }
+    }
 
     var body: some View {
         HStack(spacing: 11) {
@@ -578,7 +587,16 @@ private struct BreathingLine: View {
     let radius: CGFloat
     var topRadius: CGFloat = 0
 
-    @State private var breathe = false
+    // macOS 26 / SDK 27 turned SwiftUI's `@State` into a macro backed by the
+    // `SwiftUIMacros` plugin, which ships only with Xcode — this project builds
+    // with the Command Line Tools alone, so the attribute cannot expand here.
+    // The underlying @propertyWrapper struct is still there, so this is exactly
+    // what the macro would have generated.
+    private var _breathe = State(wrappedValue: false)
+    private var breathe: Bool {
+        get { _breathe.wrappedValue }
+        nonmutating set { _breathe.wrappedValue = newValue }
+    }
 
     var body: some View {
         NotchOutline(bottomRadius: radius, topRadius: topRadius)
@@ -614,7 +632,16 @@ struct StatusPip: View {
 
 private struct BreathingPip: View {
     let color: Color
-    @State private var breathe = false
+    // macOS 26 / SDK 27 turned SwiftUI's `@State` into a macro backed by the
+    // `SwiftUIMacros` plugin, which ships only with Xcode — this project builds
+    // with the Command Line Tools alone, so the attribute cannot expand here.
+    // The underlying @propertyWrapper struct is still there, so this is exactly
+    // what the macro would have generated.
+    private var _breathe = State(wrappedValue: false)
+    private var breathe: Bool {
+        get { _breathe.wrappedValue }
+        nonmutating set { _breathe.wrappedValue = newValue }
+    }
 
     var body: some View {
         Circle().fill(color).frame(width: 7, height: 7)

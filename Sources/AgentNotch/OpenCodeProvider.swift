@@ -101,12 +101,14 @@ final class OpenCodeProvider {
             let turnRunning = role == "assistant" && completed == nil
             if finish == "error" {
                 s.state = .failed
+                s.attention = .failed
             } else if turnRunning {
                 s.state = quiet < Config.workingGrace ? .working : .idle
             } else if role == "user" {
                 s.state = quiet < Config.workingGrace ? .working : .idle
             } else {
                 s.state = quiet < Config.recentWindow ? .needsInput : .idle
+                if s.state == .needsInput { s.attention = .turnFinished }
             }
             s.isLive = quiet < Config.recentWindow
             return s

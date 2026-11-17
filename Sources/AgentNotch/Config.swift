@@ -9,9 +9,29 @@ enum Config {
     }()
     /// After the last event, how long we still call a session "al lavoro".
     static let workingGrace: TimeInterval = 90
-    /// A tool call outstanding this long is very likely a permission prompt.
-    static let permissionSuspicion: TimeInterval = 35
-    /// Poll cadence for all three providers.
+    /// A tool call outstanding this long *might* be a permission prompt. Measured
+    /// against real transcripts, 35s was far too eager: ordinary builds and test
+    /// runs sat at 37–122s and every one of them was mistaken for a prompt. It is
+    /// now a slow visual hint only — it never makes a sound.
+    static let permissionSuspicion: TimeInterval = 180
+    /// A turn shorter than this finished while you were almost certainly still
+    /// watching, so its completion is not worth an interruption.
+    static let minWorkBeforeAlert: TimeInterval = 45
+    /// One announcement per session per this interval, whatever happens.
+    static let alertCooldown: TimeInterval = 180
+    /// And a floor between any two announcements, so three agents finishing at
+    /// once cannot machine-gun you.
+    static let alertSpacing: TimeInterval = 12
+    /// Nativ answers over HTTP, so "reachable" replaces "recently written to".
+    /// Past this, the last snapshot is treated as dead rather than current.
+    static let nativStaleAfter: TimeInterval = 8
+    /// How long a newly failed request keeps the indicator red.
+    static let nativFailureWindow: TimeInterval = 20
+    /// Re-reading the process table to find the port is only worth doing when
+    /// the endpoint stops answering.
+    static let nativDiscoveryInterval: TimeInterval = 10
+
+    /// Poll cadence for all providers.
     static let pollInterval: TimeInterval = 1.0
     /// How long the halo breathes after an agent asks for attention. It then
     /// settles to a static glow: a pulse that never stops becomes wallpaper,
@@ -76,6 +96,12 @@ enum Config {
     static var glowPerAgent: Bool {
         get { d.object(forKey: "glowPerAgent") as? Bool ?? true }
         set { d.set(newValue, forKey: "glowPerAgent") }
+    }
+    /// Stay silent about an agent whose own app is in front of you: you are
+    /// already looking at it.
+    static var quietWhenFrontmost: Bool {
+        get { d.object(forKey: "quietWhenFrontmost") as? Bool ?? true }
+        set { d.set(newValue, forKey: "quietWhenFrontmost") }
     }
     static var showWhenIdle: Bool {
         get { d.object(forKey: "showWhenIdle") as? Bool ?? false }

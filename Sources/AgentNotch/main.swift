@@ -18,10 +18,12 @@ if CommandLine.arguments.contains("--diag") {
 if CommandLine.arguments.contains("--dump") {
     let store = SessionStore()
     store.start()
-    // Big transcripts take a moment on the first pass; wait for real data
-    // rather than printing an empty snapshot.
-    let deadline = Date().addingTimeInterval(6)
-    while store.sessions.isEmpty && Date() < deadline {
+    // Big transcripts take a moment on the first pass, and providers that talk
+    // over HTTP answer on a later tick — so always give everyone a settling
+    // period rather than printing whatever the first pass happened to have.
+    let settle = Date().addingTimeInterval(3)
+    let deadline = Date().addingTimeInterval(8)
+    while (store.sessions.isEmpty && Date() < deadline) || Date() < settle {
         RunLoop.main.run(until: Date().addingTimeInterval(0.2))
     }
     let sessions = store.sessions
@@ -105,6 +107,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         for (title, key) in [("Suono quando un agente ti aspetta", "soundOnAlert"),
                              ("Avviso sul notch", "autoExpandOnAlert"),
+                             ("Zitto se l'app è in primo piano", "quietWhenFrontmost"),
                              ("Linea divisa per agente", "glowPerAgent"),
                              ("Mostra anche sessioni ferme", "showWhenIdle")] {
             let mi = NSMenuItem(title: title, action: #selector(toggle(_:)), keyEquivalent: "")

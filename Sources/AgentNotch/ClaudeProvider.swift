@@ -97,8 +97,17 @@ final class ClaudeProvider {
             s.activity = a.pending.values.first ?? a.lastToolPhrase
             s.activityKind = a.pending.isEmpty ? a.lastToolKind : a.pendingKind
             s.state = state(a, live: l != nil)
-            if s.state == .needsInput && !a.pending.isEmpty {
-                s.activity = (s.activity.map { $0 + " " } ?? "") + "· in attesa di conferma?"
+            if s.state == .needsInput {
+                if a.pending.isEmpty {
+                    // stop_reason end_turn: the agent really did hand control back.
+                    s.attention = .turnFinished
+                } else {
+                    // A tool that has not returned for minutes *might* be a
+                    // permission prompt — but it is just as likely a slow build,
+                    // so it is shown and never announced.
+                    s.attention = .inferred
+                    s.activity = (s.activity.map { $0 + " " } ?? "") + "· in attesa di conferma?"
+                }
             }
             return s
         }
