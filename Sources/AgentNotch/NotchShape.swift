@@ -66,6 +66,9 @@ extension AgentKind {
         case .claude: return Color(red: 0.91, green: 0.51, blue: 0.36)
         case .codex: return Color(red: 0.36, green: 0.84, blue: 0.70)
         case .opencode: return Color(red: 0.58, green: 0.60, blue: 1.00)
+        // Magenta: the three agent colours already occupy warm, teal and indigo,
+        // and the state colours own green, amber and red.
+        case .nativ: return Color(red: 0.96, green: 0.45, blue: 0.78)
         }
     }
 }

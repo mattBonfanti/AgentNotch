@@ -186,7 +186,8 @@ Sources/AgentNotch/
   SQLiteLite.swift        minimal read-only SQLite reader
   ClaudeProvider.swift    ┐
   CodexProvider.swift     ├ one parser per agent → [AgentSession]
-  OpenCodeProvider.swift  ┘
+  OpenCodeProvider.swift  │
+  NativProvider.swift     ┘
   SessionStore.swift      polling, urgency ordering, alerts
   NotchShape.swift        continuous-corner silhouette, glass, colors
   NotchView.swift         SwiftUI: line / compact island / alert / expanded

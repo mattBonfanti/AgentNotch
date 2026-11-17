@@ -100,10 +100,12 @@ final class CodexProvider {
             let quiet = Date().timeIntervalSince(a.lastEventAt)
             if a.failed {
                 s.state = .failed
+                s.attention = .failed
             } else if a.turnOpen {
                 s.state = quiet < Config.workingGrace ? .working : .idle
             } else {
                 s.state = quiet < Config.recentWindow ? .needsInput : .idle
+                if s.state == .needsInput { s.attention = .turnFinished }
             }
             s.isLive = quiet < Config.recentWindow
             return s

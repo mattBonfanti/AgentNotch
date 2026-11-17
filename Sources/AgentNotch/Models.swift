@@ -4,12 +4,14 @@ enum AgentKind: String, CaseIterable, Codable {
     case claude
     case codex
     case opencode
+    case nativ
 
     var label: String {
         switch self {
         case .claude: return "Claude Code"
         case .codex: return "Codex"
         case .opencode: return "OpenCode"
+        case .nativ: return "Nativ"
         }
     }
 
@@ -19,6 +21,7 @@ enum AgentKind: String, CaseIterable, Codable {
         case .claude: return "CC"
         case .codex: return "CX"
         case .opencode: return "OC"
+        case .nativ: return "NV"
         }
     }
 
@@ -28,6 +31,7 @@ enum AgentKind: String, CaseIterable, Codable {
         case .claude: return ["com.anthropic.claudefordesktop", "com.anthropic.claude"]
         case .codex: return ["com.openai.codex", "com.openai.chat"]
         case .opencode: return ["ai.opencode.desktop", "dev.opencode.desktop"]
+        case .nativ: return ["io.github.blaizzy.nativ"]
         }
     }
 }
@@ -66,7 +70,7 @@ enum SessionState: Int, Comparable, Codable {
 /// What the agent is doing right now, as a symbol the eye can decode without
 /// reading. Set by each provider from its own event vocabulary.
 enum ActivityKind: String, Equatable {
-    case shell, read, edit, search, web, subagent, mcp, thinking, file, none
+    case shell, read, edit, search, web, subagent, mcp, thinking, file, inference, none
 
     var symbol: String {
         switch self {
@@ -79,9 +83,26 @@ enum ActivityKind: String, Equatable {
         case .mcp: return "puzzlepiece.extension.fill"
         case .thinking: return "sparkles"
         case .file: return "doc.on.doc.fill"
+        case .inference: return "cpu.fill"
         case .none: return "circle.dashed"
         }
     }
+}
+
+/// Why a session is asking for attention — which is not the same question as
+/// what state it is in. A finished turn and a blocked approval both read as
+/// `needsInput` on the notch, but only one of them is worth a sound.
+enum AttentionReason: String, Equatable {
+    /// Genuinely stuck until you decide something. Always worth interrupting.
+    case blockedOnApproval
+    /// The agent finished and handed control back. Worth a sound only if it
+    /// worked long enough that you had probably looked away.
+    case turnFinished
+    /// Something broke.
+    case failed
+    /// Shown on the notch, never announced: an inference that may be wrong.
+    case inferred
+    case none
 }
 
 struct AgentSession: Identifiable, Equatable {
@@ -95,6 +116,7 @@ struct AgentSession: Identifiable, Equatable {
     /// Human phrase for what is happening right now ("Bash · swift build").
     var activity: String?
     var activityKind: ActivityKind = .none
+    var attention: AttentionReason = .none
     var startedAt: Date
     var lastEventAt: Date
     /// When the current turn began — drives the elapsed timer.
