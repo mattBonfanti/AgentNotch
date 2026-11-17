@@ -27,6 +27,7 @@ final class NotchViewModel: ObservableObject {
 struct NotchView: View {
     @ObservedObject var store: SessionStore
     @ObservedObject var vm: NotchViewModel
+    @ObservedObject var services: ServiceMonitor
 
     static let expandedWidth: CGFloat = 462
     static let rowHeight: CGFloat = 50
@@ -40,7 +41,8 @@ struct NotchView: View {
     private var visibleSessions: [AgentSession] { Array(store.sessions.prefix(4)) }
     private var alertSession: AgentSession? { store.alert ?? store.headline }
 
-    static func size(mode: NotchMode, geometry: NotchGeometry, rows: Int) -> CGSize {
+    static func size(mode: NotchMode, geometry: NotchGeometry, rows: Int,
+                     serviceRows: Int = 0) -> CGSize {
         let w = max(geometry.notchWidth, 8)
         let h = max(geometry.notchHeight, 26)
         switch mode {
@@ -52,12 +54,14 @@ struct NotchView: View {
             return CGSize(width: w + alertExtraWidth, height: h + alertExtraHeight)
         case .expanded:
             let body = CGFloat(max(min(rows, 4), 1)) * rowHeight + 14
+                + ServicesSection.height(rows: serviceRows)
             return CGSize(width: expandedWidth, height: h + body)
         }
     }
 
     private var currentSize: CGSize {
-        Self.size(mode: vm.mode, geometry: vm.geometry, rows: visibleSessions.count)
+        Self.size(mode: vm.mode, geometry: vm.geometry, rows: visibleSessions.count,
+                  serviceRows: services.rowCount)
     }
 
     private var isIsland: Bool {
@@ -207,7 +211,15 @@ struct NotchView: View {
     private var compactContent: some View {
         HStack(spacing: 0) {
             HStack(spacing: 5) {
-                ForEach(signallingSessions.prefix(3)) { session in
+                // Services get a triangle, agents keep their dots, so the two
+                // never read as the same thing.
+                if let problem = services.problemHealth {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 8.5, weight: .bold))
+                        .foregroundStyle(problem.color)
+                        .help("\(services.problemCount) servizi con problemi")
+                }
+                ForEach(signallingSessions.prefix(services.problemHealth == nil ? 3 : 2)) { session in
                     StatusPip(color: session.state == .working
                               ? session.kind.tint : session.state.color,
                               pulsing: session.wantsPulse)
@@ -300,7 +312,8 @@ struct NotchView: View {
                 Text("Nessuna sessione attiva")
                     .font(.system(size: 11))
                     .foregroundStyle(.white.opacity(0.4))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: Self.rowHeight + 7)
             } else {
                 VStack(spacing: 2) {
                     ForEach(visibleSessions) { session in
@@ -319,6 +332,10 @@ struct NotchView: View {
                 .padding(.horizontal, 7)
                 .padding(.bottom, 7)
             }
+            if services.rowCount > 0 {
+                ServicesSection(monitor: services)
+            }
+            Spacer(minLength: 0)
         }
     }
 

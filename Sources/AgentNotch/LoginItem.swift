@@ -3,7 +3,9 @@ import Foundation
 /// Start-at-login via a plain LaunchAgent. Works for locally built, ad-hoc
 /// signed apps, where SMAppService registration is unreliable.
 enum LoginItem {
-    private static let label = "local.agentnotch"
+    // Derived from the bundle so a side-by-side test build never rewrites the
+    // installed app's LaunchAgent. The regular bundle is still local.agentnotch.
+    private static let label = Bundle.main.bundleIdentifier ?? "local.agentnotch"
     private static var plistURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/LaunchAgents/\(label).plist")
